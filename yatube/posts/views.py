@@ -3,17 +3,16 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import SlugField
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-
+from yatube.settings import TIME_CASH
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post
+from django.views.decorators.cache import cache_page
 from .utils import paginator
 
 User = get_user_model()
 
 
-# from yatube.settings import TIME_CASH
-# from django.views.decorators.cache import cache_page
-# @cache_page(TIME_CASH, key_prefix="index_page")
+@cache_page(TIME_CASH, key_prefix="index_page")
 def index(request: HttpRequest) -> HttpResponse:
     """Вернуть HttpResponse объекта главной страницы"""
     post_list = Post.objects.select_related("group")

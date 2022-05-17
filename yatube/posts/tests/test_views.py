@@ -1,6 +1,6 @@
 import shutil
 import tempfile
-
+from django.core.cache import cache
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -66,6 +66,7 @@ class ViewsTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_index_correct_context(self):
         """Проверить контекст шаблона index."""
@@ -164,6 +165,7 @@ class PaginatorViewsTest(TestCase):
             description='test_description',
             slug='test-slug'
         )
+        cache.clear()
 
     def setUp(self):
         for post_temp in range(POSTS):
