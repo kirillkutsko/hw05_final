@@ -12,7 +12,7 @@
         <li class="list-group-item">
           Группа: {{ post.group }}
           {% if post.group %}   
-            <a href="{% url 'posts:group_posts' post.group.slug %}">все записи группы.</a>
+            <a href="{% url "posts:group_posts" post.group.slug %}">все записи группы.</a>
           {% endif %}
         </li>
         <li class="list-group-item">
@@ -22,7 +22,7 @@
           Всего постов автора:{{ post.author.posts.count }} 
         </li>
         <li class="list-group-item">
-          <a href="{% url 'posts:profile' post.author %}">все посты пользователя</a>
+          <a href="{% url "posts:profile" post.author %}">все посты пользователя</a>
         </li>
       </ul>
     </aside>    
@@ -31,15 +31,15 @@
         <img class="card-img my-2" src="{{ im.url }}">
       {% endthumbnail %}
       <p>
-        {{ post.text }}
+        {{ post.text|linebreaksbr }}
       </p>
       {% if post.author == request.user %}
-        <a class="btn btn-primary" href="{% url 'posts:post_edit' post.pk %}">
+        <a class="btn btn-primary" href="{% url "posts:post_edit" post.pk %}">
           редактировать запись
         </a>
       {% endif %}
-      {% include 'includes/comments.html' %}
     </article>
+    {% include "includes/comments.html" %}
   </div>
 </div>
 {% endblock %}

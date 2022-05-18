@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}
   {% if is_edit %}
     Редактировать пост
@@ -19,15 +19,15 @@
             {% endif %}
           </div>
           <div class="card-body">
-            {% include 'includes/errors.html' %}
+            {% include "includes/errors.html" %}
             <form method="post" enctype="multipart/form-data"
               {% if is_edit %}
-                action="{% url 'posts:post_edit' post_id %}"
+                action="{% url "posts:post_edit" post_id %}"
               {% else %}
-                action="{% url 'posts:post_create' %}"
+                action="{% url "posts:post_create" %}"
               {% endif %}>
               {% csrf_token %}
-              {% include 'includes/form.html' %}
+              {% include "includes/form.html" %}
               <div class="d-flex justify-content-end">
                 <button type="submit" class="btn btn-primary">
                   {% if is_edit %}

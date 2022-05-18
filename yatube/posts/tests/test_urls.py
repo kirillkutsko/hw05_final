@@ -91,7 +91,7 @@ class StaticURLTests(TestCase):
         Запрос к несуществующей странице
         """
         response = self.guest_client.get('/unknown/')
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_post_create_url_redirect_anonymous_on_admin_login(self):
         """

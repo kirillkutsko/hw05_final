@@ -15,7 +15,7 @@
   <p>{{ post.text|linebreaksbr }}</p> 
   <a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a>
   <br>
-  {% if group == post.group %}
+  {% if post.group and not post.group.slug in request.path %}
   {% else %}
     {% if post.group %}
       <a href="{% url 'posts:group_posts' post.group.slug %}">все записи группы.</a>
