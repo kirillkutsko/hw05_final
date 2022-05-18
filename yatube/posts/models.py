@@ -1,7 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import UniqueConstraint
 
 User = get_user_model()
+
+
+class Posts(models.Model):
+    pub_date = models.DateTimeField(
+        'Время публикации',
+        auto_now_add=True,
+        null=True
+    )
+
+    class Meta:
+        abstract = True
 
 
 class Group(models.Model):
@@ -10,16 +22,15 @@ class Group(models.Model):
     description = models.TextField('Описание группы')
 
     class Meta:
-        verbose_name = "Администрирование группы"
-        verbose_name_plural = "Администрирование групп"
+        verbose_name = 'Администрирование группы'
+        verbose_name_plural = 'Администрирование групп'
 
     def __str__(self) -> str:
         return self.title
 
 
-class Post(models.Model):
+class Post(Posts):
     text = models.TextField('Текст поста', help_text='Введите текст поста')
-    pub_date = models.DateTimeField('Время публикации', auto_now_add=True)
     author = models.ForeignKey(
         User,
         verbose_name='Автор',
@@ -38,19 +49,20 @@ class Post(models.Model):
     image = models.ImageField(
         'Картинка',
         upload_to='posts/',
-        blank=True
+        blank=True,
+        null=True,
     )
 
     class Meta:
-        verbose_name = "Администрирование поста"
-        verbose_name_plural = "Администрирование постов"
-        ordering = ("-pub_date", )
+        verbose_name = 'Администрирование поста'
+        verbose_name_plural = 'Администрирование постов'
+        ordering = ('-pub_date',)
 
     def __str__(self) -> str:
         return self.text[:15]
 
 
-class Comment(models.Model):
+class Comment(Posts):
     post = models.ForeignKey(
         Post,
         verbose_name='Пост',
@@ -67,18 +79,17 @@ class Comment(models.Model):
         'Текст комментария',
         help_text='Введите текст комментария'
     )
-    created = models.DateTimeField('Время комментирования', auto_now_add=True)
 
     class Meta:
-        verbose_name = "Администрирование комментария"
-        verbose_name_plural = "Администрирование комментариев"
-        ordering = ("-created", )
+        verbose_name = 'Администрирование комментария'
+        verbose_name_plural = 'Администрирование комментариев'
+        ordering = ('-pub_date',)
 
     def __str__(self) -> str:
         return self.text[:15]
 
 
-class Follow(models.Model):
+class Follow(Posts):
     user = models.ForeignKey(
         User,
         verbose_name='Подписчик',
@@ -93,9 +104,9 @@ class Follow(models.Model):
     )
 
     class Meta:
-        verbose_name = "Администрирование подписки"
-        verbose_name_plural = "Администрирование подписок"
-        ordering = ("author", )
+        verbose_name = 'Администрирование подписки'
+        verbose_name_plural = 'Администрирование подписок'
+        UniqueConstraint(fields=['user', 'author'], name='unique_following')
 
     def __str__(self) -> str:
         return self.text[:15]

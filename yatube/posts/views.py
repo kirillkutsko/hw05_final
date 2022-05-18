@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import SlugField
+from django.db.models import CharField, IntegerField, SlugField
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
@@ -9,37 +9,37 @@ from yatube.settings import TIME_CASH
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post
-from .utils import paginator
+from .utils import get_paginator
 
 User = get_user_model()
 
 
 @cache_page(TIME_CASH, key_prefix="index_page")
 def index(request: HttpRequest) -> HttpResponse:
-    """Вернуть HttpResponse объекта главной страницы"""
-    post_list = Post.objects.select_related("group")
-    page_obj = paginator(request, post_list)
+    """Вернуть HttpResponse объекта главной страницы."""
+    posts = Post.objects.select_related("group", "author")
+    page_obj = get_paginator(request, posts)
     return render(request, "posts/index.html", {'page_obj': page_obj})
 
 
 def group_posts(request: HttpRequest, slug: SlugField) -> HttpResponse:
-    """Вернуть HttpResponse объекта страницы группы"""
+    """Вернуть HttpResponse объекта страницы группы."""
     group = get_object_or_404(Group, slug=slug)
-    post_list = group.posts.select_related("group", "author")
-    page_obj = paginator(request, post_list)
+    posts = group.posts.select_related("group", "author")
+    page_obj = get_paginator(request, posts)
     context = {"group": group, "page_obj": page_obj}
     return render(request, "posts/group_list.html", context)
 
 
-def profile(request, username):
+def profile(request: HttpRequest, username: CharField) -> HttpResponse:
+    """Вернуть HttpResponse объекта страницы профиля."""
     author = get_object_or_404(User, username=username)
-    post_list = author.posts.select_related("author")
-    page_obj = paginator(request, post_list)
-    if request.user.is_authenticated and request.user != author:
-        following = Follow.objects.filter(
-            user=request.user, author=author).exists()
-    else:
-        following = False
+    posts = author.posts.select_related("author")
+    page_obj = get_paginator(request, posts)
+    following = request.user.is_authenticated and Follow.objects.filter(
+        user=request.user,
+        author=author
+    ).exists()
     context = {
         "author": author,
         "page_obj": page_obj,
@@ -48,12 +48,11 @@ def profile(request, username):
     return render(request, 'posts/profile.html', context)
 
 
-def post_detail(request, post_id):
+def post_detail(request: HttpRequest, post_id: IntegerField) -> HttpResponse:
+    """Вернуть HttpResponse объекта страницы деталей поста."""
     post = get_object_or_404(Post, pk=post_id)
     comments = post.comments.all()
-    form = CommentForm(
-        request.POST or None
-    )
+    form = CommentForm
     context = {
         "post": post,
         "comments": comments,
@@ -63,7 +62,8 @@ def post_detail(request, post_id):
 
 
 @login_required
-def post_create(request):
+def post_create(request: HttpRequest) -> HttpResponse:
+    """Вернуть HttpResponse объекта страницы создания поста."""
     form = PostForm(
         request.POST or None,
         files=request.FILES or None,
@@ -77,7 +77,8 @@ def post_create(request):
 
 
 @login_required
-def post_edit(request, post_id):
+def post_edit(request: HttpRequest, post_id: IntegerField) -> HttpResponse:
+    """Вернуть HttpResponse объекта страницы редактирования поста."""
     post = get_object_or_404(Post, pk=post_id)
     form = PostForm(
         request.POST or None,
@@ -103,7 +104,8 @@ def post_edit(request, post_id):
 
 
 @login_required
-def add_comment(request, post_id):
+def add_comment(request: HttpRequest, post_id: IntegerField) -> HttpResponse:
+    """Вернуть HttpResponse объекта добавления комментария."""
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid():
@@ -115,9 +117,10 @@ def add_comment(request, post_id):
 
 
 @login_required
-def follow_index(request):
-    post_list = Post.objects.filter(author__following__user=request.user)
-    page_obj = paginator(request, post_list)
+def follow_index(request: HttpRequest) -> HttpResponse:
+    """Вернуть HttpResponse объекта страницы подписок."""
+    posts = Post.objects.filter(author__following__user=request.user)
+    page_obj = get_paginator(request, posts)
     context = {
         "page_obj": page_obj
     }
@@ -125,7 +128,8 @@ def follow_index(request):
 
 
 @login_required
-def profile_follow(request, username):
+def profile_follow(request: HttpRequest, username: CharField) -> HttpResponse:
+    """Вернуть HttpResponse объекта подписки на автора."""
     author = get_object_or_404(User, username=username)
     if request.user != author:
         Follow.objects.get_or_create(
@@ -135,8 +139,11 @@ def profile_follow(request, username):
 
 
 @login_required
-def profile_unfollow(request, username):
-    # Дизлайк, отписка
+def profile_unfollow(
+    request: HttpRequest,
+    username: CharField
+) -> HttpResponse:
+    """Вернуть HttpResponse объекта отмены подписки на автора."""
     author = get_object_or_404(User, username=username)
     Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:profile', username=author.username)
