@@ -89,7 +89,7 @@ class Comment(Posts):
         return self.text[:15]
 
 
-class Follow(Posts):
+class Follow(models.Model):
     user = models.ForeignKey(
         User,
         verbose_name='Подписчик',

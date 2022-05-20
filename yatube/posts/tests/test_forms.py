@@ -18,7 +18,6 @@ class PostFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
         cls.user = User.objects.create_user(username='Kirill')
         cls.group = Group.objects.create(
             title='Тестовый заголовок',
@@ -42,7 +41,13 @@ class PostFormTests(TestCase):
             author=cls.user,
             text='Текст постa',
             group=cls.group,
+            image=None
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.guest_client = Client()
@@ -52,7 +57,7 @@ class PostFormTests(TestCase):
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
         posts_count = Post.objects.count()
-        small_gif = (
+        very_small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
             b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
@@ -61,12 +66,14 @@ class PostFormTests(TestCase):
             b'\x0A\x00\x3B'
         )
         uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=small_gif,
+            name='very_small.gif',
+            content=very_small_gif,
             content_type='image/gif'
         )
         form_data = {
+
             'text': 'Текст поста',
+
             'group': self.group.id,
             'image': uploaded,
         }
@@ -87,8 +94,8 @@ class PostFormTests(TestCase):
             Post.objects.filter(
                 text='Текст поста',
                 author=self.user,
-                group=self.group.id,
-                image='posts/small.gif'
+                group=self.post.group.id,
+                image='posts/very_small.gif'
             ).exists()
         )
 
@@ -97,7 +104,7 @@ class PostFormTests(TestCase):
         post = PostFormTests.post
         form_data = {
             'text': 'Изменяемый текст поста',
-            'group': self.group.id
+            'group': self.group.id,
         }
         self.authorized_client.post(
             reverse('posts:post_edit', kwargs={'post_id': f'{post.id}'}),
@@ -105,4 +112,10 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(
             Post.objects.get(id=post.id).text, 'Изменяемый текст поста'
+        )
+        self.assertEqual(
+            Post.objects.get(id=post.id).group, self.post.group
+        )
+        self.assertEqual(
+            Post.objects.get(id=post.id).author, self.post.author
         )

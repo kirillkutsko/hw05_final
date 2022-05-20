@@ -6,23 +6,23 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-
-from ..models import Comment, Group, Post
+from requests import post
+from yatube.settings import POST_PER_PAGE
+from ..models import Comment, Group, Post, Follow
 
 User = get_user_model()
 POSTS = 13
 SECOND_PAGE_POSTS = 3
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
-POST_PER_PAGE = 10
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class ViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
         cls.user = User.objects.create_user(username='NoNameAuthor')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -62,6 +62,20 @@ class ViewsTests(TestCase):
             slug='test_slug2',
             description='Тестовое описание2',
         )
+        cls.follow = Follow.objects.create(
+            user=cls.user,
+            author=cls.post.author
+        )
+        cls.comment = Comment.objects.create(
+            post=cls.post,
+            author=cls.user,
+            text='Комментарий'
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.guest_client = Client()
@@ -85,11 +99,13 @@ class ViewsTests(TestCase):
         response = self.authorized_client.get(self.profile)
         self.assertEqual(response.context['post'], self.post)
         self.assertEqual(response.context['author'], self.user)
+        self.assertTrue(response.context['following'], self.follow)
 
     def test_post_detail_correct_context(self):
         """Проверить контекст шаблона post_detail."""
         response = self.authorized_client.get(self.post_detail)
         self.assertEqual(response.context['post'], self.post)
+        self.assertEquals(response.context['comments'], self.comment)
 
     def test_create_post_edit_correct_context(self):
         """Проверить контекст шаблона post_edit при редактировании."""
