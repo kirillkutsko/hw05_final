@@ -38,7 +38,9 @@ class ViewsTests(TestCase):
             'username': 'NoNameAuthor'
         })
         cls.post_detail = reverse('posts:post_detail', kwargs={'post_id': '1'})
+        cls.post_create = reverse('posts:post_create')
         cls.post_edit = reverse('posts:post_edit', kwargs={'post_id': '1'})
+        cls.follow_index = reverse('posts:follow_index')
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -106,28 +108,38 @@ class ViewsTests(TestCase):
         """Проверить контекст шаблона post_detail."""
         response = self.authorized_client.get(self.post_detail)
         self.assertEqual(response.context['post'], self.post)
-        self.assertEquals(response.context['comments'], self.comment)
+        self.assertTrue(response.context['comments'], self.comment)
 
-    def test_create_post_edit_correct_context(self):
-        """Проверить контекст шаблона post_edit при редактировании."""
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.fields.ChoiceField,
-        }
-        response = self.authorized_client.get(self.post_edit)
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
+    def test_follow_index_correct_context(self):
+        """Проверить контекст шаблона follow_index."""
+        response = self.authorized_client.get(self.follow_index)
+        self.assertEqual(response.context['post'], self.post)
 
-    def test_create_post_correct_context(self):
-        """Проверить контекст шаблона post_edit при создании."""
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.fields.ChoiceField,
-        }
-        response = self.authorized_client.get(reverse('posts:post_create'))
-        for value, expected in form_fields.items():
+    def test_post_edit_correct_context(self):
+        """Проверить контекст шаблона post_edit."""
+        form_fields = [
+            (
+                'text',
+                forms.fields.CharField,
+                self.authorized_client.get(self.post_edit)
+            ),
+            (
+                'group',
+                forms.fields.ChoiceField,
+                self.authorized_client.get(self.post_edit)
+            ),
+            (
+                'text',
+                forms.fields.CharField,
+                self.authorized_client.get(self.post_create)
+            ),
+            (
+                'group',
+                forms.fields.ChoiceField,
+                self.authorized_client.get(self.post_create)
+            )
+        ]
+        for value, expected, response in form_fields:
             with self.subTest(value=value):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
@@ -155,6 +167,12 @@ class ViewsTests(TestCase):
             follow=True,
         )
         self.assertEqual(Comment.objects.count(), comment_count + 1)
+        self.assertTrue(
+            Comment.objects.filter(
+                text='Комментарий',
+                author=self.user,
+            ).exists()
+        )
 
     def test_guest_client_cant_comment(self):
         """
