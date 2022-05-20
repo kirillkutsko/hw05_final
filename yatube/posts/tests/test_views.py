@@ -8,9 +8,10 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from requests import post
+
 from yatube.settings import POST_PER_PAGE
-from ..models import Comment, Group, Post, Follow
+
+from ..models import Comment, Follow, Group, Post
 
 User = get_user_model()
 POSTS = 13
