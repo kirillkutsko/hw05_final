@@ -25,6 +25,8 @@ class ViewsTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='NoNameAuthor')
+        cls.user_follower = User.objects.create_user(username='Follower')
+        cls.user_following = User.objects.create_user(username='Following')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_slug',
@@ -60,6 +62,10 @@ class ViewsTests(TestCase):
             group=cls.group,
             image=cls.uploaded,
         )
+        cls.post_to_follow = Post.objects.create(
+            author=cls.user_following,
+            text='Пост для проверки подписок',
+        )
         cls.true_group = Group.objects.create(
             title='Тестовая группа2',
             slug='test_slug2',
@@ -84,6 +90,10 @@ class ViewsTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.user_follower_client = Client()
+        self.user_follower_client.force_login(self.user_follower)
+        self.user_following_client = Client()
+        self.user_following_client.force_login(self.user_following)
         cache.clear()
 
     def test_index_correct_context(self):
@@ -188,6 +198,67 @@ class ViewsTests(TestCase):
             follow=True,
         )
         self.assertEqual(Comment.objects.count(), comment_count)
+
+    def test_cache_index(self):
+        """Проверить кэш главной страницы."""
+        post_1 = Post.objects.create(
+            author=self.user,
+            text='Тестовый пост_1',
+            group=self.group
+        )
+        response_1 = self.authorized_client.get(self.index)
+        Post.objects.filter(pk=post_1.id).delete()
+        response_2 = self.authorized_client.get(self.index)
+        self.assertEqual(response_1.content, response_2.content)
+
+    def test_follow(self):
+        """Проверить подписку и отмену подписки"""
+        Follow.objects.create(
+            user=self.user_follower,
+            author=self.user_following
+        )
+        response = self.user_follower_client.get(self.follow_index)
+        self.assertEqual(
+            response.context['page_obj'][0].text,
+            self.post_to_follow.text
+        )
+        response_2 = self.user_following_client.get(self.follow_index)
+        self.assertNotEqual(response_2, self.post_to_follow.text)
+        response_3 = self.user_follower_client.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.user_following}
+            )
+        )
+        follow = None
+        self.assertEqual(response_3.context, follow)
+
+    def test_user_new_post_in_follow(self):
+        """
+        Проверить новые посты пользователей у подписчиков и не подписчиков.
+        """
+        Follow.objects.create(
+            user=self.user_follower,
+            author=self.user_following
+        )
+        new_post = {
+            'text': 'Новый пост у подписчиков',
+            'author': self.user_following,
+        }
+        response = self.user_following_client.post(
+            reverse('posts:post_create'),
+            data=new_post,
+        )
+        response = self.user_follower_client.get(self.follow_index)
+        self.assertEqual(
+            response.context['page_obj'][0].text,
+            new_post['text']
+        )
+        response = self.user_following_client.get(self.follow_index)
+        self.assertNotEqual(
+            response.context,
+            new_post['text']
+        )
 
 
 class PaginatorViewsTest(TestCase):

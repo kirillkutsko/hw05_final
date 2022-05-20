@@ -71,9 +71,7 @@ class PostFormTests(TestCase):
             content_type='image/gif'
         )
         form_data = {
-
             'text': 'Текст поста',
-
             'group': self.group.id,
             'image': uploaded,
         }
