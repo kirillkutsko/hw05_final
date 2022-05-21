@@ -11,6 +11,7 @@ from django.urls import reverse
 
 from yatube.settings import POST_PER_PAGE
 
+from ..forms import CommentForm
 from ..models import Comment, Follow, Group, Post
 
 User = get_user_model()
@@ -119,6 +120,7 @@ class ViewsTests(TestCase):
         response = self.authorized_client.get(self.post_detail)
         self.assertEqual(response.context['post'], self.post)
         self.assertTrue(response.context['comments'], self.comment)
+        self.assertTrue(response.context['form'], CommentForm())
 
     def test_follow_index_correct_context(self):
         """Проверить контекст шаблона follow_index."""
@@ -139,6 +141,11 @@ class ViewsTests(TestCase):
                 self.authorized_client.get(self.post_edit)
             ),
             (
+                'image',
+                forms.fields.ImageField,
+                self.authorized_client.get(self.post_edit)
+            ),
+            (
                 'text',
                 forms.fields.CharField,
                 self.authorized_client.get(self.post_create)
@@ -146,6 +153,11 @@ class ViewsTests(TestCase):
             (
                 'group',
                 forms.fields.ChoiceField,
+                self.authorized_client.get(self.post_create)
+            ),
+            (
+                'image',
+                forms.fields.ImageField,
                 self.authorized_client.get(self.post_create)
             )
         ]
@@ -192,12 +204,16 @@ class ViewsTests(TestCase):
         new_comment = {
             'text': 'text-test'
         }
-        self.guest_client.post(
+        response = self.guest_client.post(
             reverse('posts:add_comment', args=[self.post.id]),
             data=new_comment,
             follow=True,
         )
         self.assertEqual(Comment.objects.count(), comment_count)
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/posts/{self.post.id}/comment/'
+        )
 
     def test_cache_index(self):
         """Проверить кэш главной страницы."""
@@ -210,9 +226,12 @@ class ViewsTests(TestCase):
         Post.objects.filter(pk=post_1.id).delete()
         response_2 = self.authorized_client.get(self.index)
         self.assertEqual(response_1.content, response_2.content)
+        cache.clear()
+        response_3 = self.authorized_client.get(self.index)
+        self.assertNotEqual(response_2.content, response_3.content)
 
     def test_follow(self):
-        """Проверить подписку и отмену подписки"""
+        """Проверить подписку на автора."""
         Follow.objects.create(
             user=self.user_follower,
             author=self.user_following
@@ -224,40 +243,48 @@ class ViewsTests(TestCase):
         )
         response_2 = self.user_following_client.get(self.follow_index)
         self.assertNotEqual(response_2, self.post_to_follow.text)
-        response_3 = self.user_follower_client.get(
+
+    def test_unfollow(self):
+        """Проверить отмену подписки на автора."""
+        Follow.objects.create(
+            user=self.user_follower,
+            author=self.user_following
+        )
+        response = self.user_follower_client.get(
             reverse(
                 'posts:profile_unfollow',
                 kwargs={'username': self.user_following}
             )
         )
         follow = None
-        self.assertEqual(response_3.context, follow)
+        self.assertEqual(response.context, follow)
 
-    def test_user_new_post_in_follow(self):
+    def test_new_post_in_follow_user(self):
         """
-        Проверить новые посты пользователей у подписчиков и не подписчиков.
+        Проверить новые посты пользователей у подписчиков.
         """
         Follow.objects.create(
             user=self.user_follower,
             author=self.user_following
         )
-        new_post = {
-            'text': 'Новый пост у подписчиков',
-            'author': self.user_following,
-        }
-        response = self.user_following_client.post(
-            reverse('posts:post_create'),
-            data=new_post,
-        )
         response = self.user_follower_client.get(self.follow_index)
         self.assertEqual(
             response.context['page_obj'][0].text,
-            new_post['text']
+            self.post_to_follow.text
+        )
+
+    def test_new_post_in_ufollow_user(self):
+        """
+        Проверить новые посты пользователей у не подписчиков.
+        """
+        Follow.objects.create(
+            user=self.user_follower,
+            author=self.user_following
         )
         response = self.user_following_client.get(self.follow_index)
         self.assertNotEqual(
             response.context,
-            new_post['text']
+            self.post_to_follow
         )
 
 

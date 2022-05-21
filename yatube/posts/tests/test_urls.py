@@ -79,7 +79,6 @@ class StaticURLTests(TestCase):
             with self.subTest(reverse_name=reverse_name):
                 response = self.guest_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
-                self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_pages_uses_correct_template_user(self):
         """URL-адрес использует соответствующий шаблон для auth_users"""
@@ -110,13 +109,6 @@ class StaticURLTests(TestCase):
             with self.subTest(reverse_name=reverse_name):
                 response = self.guest_client.get(reverse_name)
                 self.assertRedirects(response, redirect)
-
-    def test_404_page(self):
-        """
-        Запрос к несуществующей странице
-        """
-        response = self.guest_client.get('/unknown/')
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_post_edit_url_redirect_anonymous_on_admin_login(self):
         """

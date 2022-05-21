@@ -92,7 +92,7 @@ class PostFormTests(TestCase):
             Post.objects.filter(
                 text='Текст поста',
                 author=self.user,
-                group=self.post.group.id,
+                group=self.group,
                 image='posts/very_small.gif'
             ).exists()
         )
@@ -108,12 +108,13 @@ class PostFormTests(TestCase):
             reverse('posts:post_edit', kwargs={'post_id': f'{post.id}'}),
             data=form_data,
         )
+        edited_post = Post.objects.get(id=post.id)
         self.assertEqual(
-            Post.objects.get(id=post.id).text, 'Изменяемый текст поста'
+            edited_post.text, 'Изменяемый текст поста'
         )
         self.assertEqual(
-            Post.objects.get(id=post.id).group, self.post.group
+            edited_post.group, self.post.group
         )
         self.assertEqual(
-            Post.objects.get(id=post.id).author, self.post.author
+            edited_post.author, self.post.author
         )

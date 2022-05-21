@@ -52,10 +52,7 @@ def post_detail(request: HttpRequest, post_id: IntegerField) -> HttpResponse:
     """Вернуть HttpResponse объекта страницы деталей поста."""
     post = get_object_or_404(Post, pk=post_id)
     comments = post.comments.all()
-    form = CommentForm(
-        request.POST or None
-    )
-    # без request.POST or None не проходятся тесты яндекса
+    form = CommentForm()
     context = {
         "post": post,
         "comments": comments,
